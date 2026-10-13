@@ -6,7 +6,11 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-request.inte
 export class RedisService {
   private readonly logger = new Logger(RedisService.name);
 
-  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {
+  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis | null) {
+    if (!this.redis) {
+      this.logger.warn('Redis not configured; session cache disabled.');
+      return;
+    }
     this.redis.on('error', (err) => {
       this.logger.error(`Redis Error: ${err.message}`, err.stack);
     });
@@ -20,6 +24,7 @@ export class RedisService {
    * TTL should match the JWT expiration time (e.g. 15 minutes = 900 seconds).
    */
   async setSessionAuthContext(sid: string, userId: string, authContext: AuthenticatedUser, ttlSeconds: number = 900): Promise<void> {
+    if (!this.redis) return;
     try {
       const pipeline = this.redis.pipeline();
       
@@ -43,6 +48,7 @@ export class RedisService {
    * Retrieves the user authorization context from Redis.
    */
   async getSessionAuthContext(sid: string): Promise<AuthenticatedUser | null> {
+    if (!this.redis) return null;
     try {
       const data = await this.redis.get(`session:${sid}`);
       if (!data) return null;
@@ -57,6 +63,7 @@ export class RedisService {
    * Invalidates a single session by its session ID.
    */
   async invalidateSession(sid: string, userId?: string): Promise<void> {
+    if (!this.redis) return;
     try {
       const pipeline = this.redis.pipeline();
       pipeline.del(`session:${sid}`);
@@ -74,6 +81,7 @@ export class RedisService {
    * Useful when user is locked, roles change, permissions change, etc.
    */
   async invalidateAllUserSessions(userId: string): Promise<void> {
+    if (!this.redis) return;
     try {
       const sessions = await this.redis.smembers(`user-sessions:${userId}`);
       if (sessions && sessions.length > 0) {

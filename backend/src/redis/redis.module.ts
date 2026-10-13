@@ -12,6 +12,9 @@ import { RedisService } from './redis.service';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const redisUrl = configService.get<string>('REDIS_URL');
+        if (!redisUrl && !configService.get<string>('REDIS_HOST')) {
+          return null;
+        }
         if (redisUrl) {
           return new Redis(redisUrl, {
             retryStrategy(times) {
