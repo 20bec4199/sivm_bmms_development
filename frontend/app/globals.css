@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─────────────────────────────────────────────────────────────────
+   BMMS Design System — Landing Page
+   Background: #05070A  Surface: #090D12 / #0D1218
+   Border: rgba(255,255,255,0.05–0.12)
+   Primary: #F5F7FA   Secondary: #94A3B8
+   Accent Blue: #3b82f6   Accent Cyan: #22d3ee
+───────────────────────────────────────────────────────────────── */
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --bmms-bg: #05070A;
+  --bmms-surface-1: #090D12;
+  --bmms-surface-2: #0D1218;
+  --bmms-border: rgba(255, 255, 255, 0.07);
+  --bmms-text-primary: #F5F7FA;
+  --bmms-text-secondary: #94A3B8;
+  --bmms-blue: #3b82f6;
+  --bmms-cyan: #22d3ee;
+}
+
+.dark {
+  --background: #05070A;
+  --foreground: #F5F7FA;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: 'Inter', var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ─── Base ─────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* ─── Selection ────────────────────────────────────────────────── */
+::selection {
+  background-color: rgba(59, 130, 246, 0.25);
+  color: inherit;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────  */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+/* ─── Landing page specific ────────────────────────────────────── */
+.landing-bg {
+  background-color: #05070A;
+}
+
+/* Prevent Three.js canvas from blocking pointer events on parent overlays */
+canvas {
+  outline: none;
+}
+
+/* ─── Transitions ───────────────────────────────────────────────  */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

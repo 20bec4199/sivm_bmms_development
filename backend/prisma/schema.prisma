@@ -1,0 +1,1911 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id                   String                         @id @default(uuid())
+  name                 String
+  code                 String?
+  type                 String?                        @default("Property Management")
+  contactEmail         String?
+  contactPhone         String?
+  contactAddress       String?
+  status               String                         @default("ACTIVE")
+  subscriptionPlan     String                         @default("Enterprise")
+  lastActivityAt       DateTime?
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  deletedAt            DateTime?
+  industry             String?
+  size                 String?
+  assetCategories      AssetCategory[]
+  assets               Asset[]
+  auditLogs            AuditLog[]
+  complaintCategories  ComplaintCategory[]
+  complaints           Complaint[]
+  departments          Department[]
+  documentCategories   DocumentCategory[]
+  documents            Document[]
+  facilities           Facility[]
+  facilityBookings     FacilityBooking[]
+  incidents            Incident[]
+  securityPosts        SecurityPost[]
+  securityPostAssignments SecurityPostAssignment[]
+  loginHistories       LoginHistory[]
+  maintenancePlans     MaintenancePlan[]
+  notifications        Notification[]
+  modules              OrganizationModule[]
+  packages             OrganizationPackage[]
+  addons               OrganizationAddon[]
+  propertyCategories   OrganizationPropertyCategory[]
+  propertyTypes        OrganizationPropertyType[]
+  owners               Owner[]
+  patrolRoutes         PatrolRoute[]
+  permissions          Permission[]
+  propertyNodes        PropertyNode[]
+  roles                Role[]
+  technicianProfiles   TechnicianProfile[]
+  tenants              Tenant[]
+  unitTransferHistory  UnitTransferHistory[]
+  userPropertyNodes    UserPropertyNode[]
+  users                User[]
+  vehicles             Vehicle[]
+  visitorRegistrations VisitorRegistration[]
+  visitors             Visitor[]
+  workOrders           WorkOrder[]
+  parkingAreas         ParkingArea[]
+  parkingSlots         ParkingSlot[]
+  parkingAllocations   ParkingAllocation[]
+  parkingHistory       ParkingHistory[]
+  parkingViolations    ParkingViolation[]
+  parkingConfigurations ParkingConfiguration[]
+  parkingRules         ParkingRule[]
+  parkingSessions      ParkingSession[]
+  parkingReservations  ParkingReservation[]
+  parkingPermits       ParkingPermit[]
+  parkingRates         ParkingRate[]
+  parkingAccessEvents  ParkingAccessEvent[]
+  evChargingSessions   EVChargingSession[]
+  alertBroadcasts      AlertBroadcast[]
+
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+model Department {
+  id             String       @id @default(uuid())
+  organizationId String
+  parentId       String?
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children       Department[] @relation("DepartmentHierarchy")
+  users          User[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([parentId])
+  @@index([deletedAt])
+  @@map("departments")
+}
+
+model User {
+  id                      String               @id @default(uuid())
+  organizationId          String
+  departmentId            String?
+  email                   String               @unique
+  emailNormalized         String               @unique
+  passwordHash            String
+  firstName               String
+  lastName                String?
+  phone                   String?
+  avatarUrl               String?
+  isActive                Boolean              @default(true)
+  emailVerified           Boolean              @default(false)
+  emailVerifiedAt         DateTime?
+  isPlatformAdmin         Boolean              @default(false)
+  isPermanentlyLocked     Boolean              @default(false)
+  lockedUntil             DateTime?
+  failedLoginCount        Int                  @default(0)
+  lastFailedLoginAt       DateTime?
+  lastLoginAt             DateTime?
+  lastLoginIp             String?
+  createdById             String?
+  updatedById             String?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  deletedAt               DateTime?
+  auditLogsCreated        AuditLog[]           @relation("AuditLogActor")
+  alertsCreated           AlertBroadcast[]
+  comments                ComplaintComment[]
+  complaintsAssigned      Complaint[]          @relation("ComplaintAssignee")
+  complaints              Complaint[]          @relation("ComplaintCreator")
+  deviceTokens            DeviceToken[]
+  emailVerificationTokens EmailVerification[]
+  facilityBookings        FacilityBooking[]
+  loginHistories          LoginHistory[]
+  passwordHistories       PasswordHistory[]
+  passwordResetTokens     PasswordResetToken[]
+  refreshTokens           RefreshToken[]
+  sessions                Session[]
+  technicianProfile       TechnicianProfile?
+  userPropertyNodes       UserPropertyNode[]
+  securityPostAssignments SecurityPostAssignment[]
+  userRoles               UserRole[]
+  ownerProfile            Owner?
+  tenantProfile           Tenant?
+  department              Department?          @relation(fields: [departmentId], references: [id])
+  organization            Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workOrdersAssigned      WorkOrder[]          @relation("WorkOrderAssignedTo")
+  workOrdersResident      WorkOrder[]          @relation("WorkOrderResident")
+  parkingAllocations      ParkingAllocation[]
+  reportedViolations      ParkingViolation[]   @relation("ReportedViolations")
+  parkingReservations     ParkingReservation[]
+  parkingPermits          ParkingPermit[]
+  parkingSessions         ParkingSession[]
+  evChargingSessions      EVChargingSession[]
+
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([email])
+  @@index([emailNormalized])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Role {
+  id              String           @id @default(uuid())
+  organizationId  String
+  name            String
+  description     String?
+  isDefault       Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+  rolePermissions RolePermission[]
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([deletedAt])
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  organizationId  String?
+  action          String
+  subject         String
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+
+  @@unique([organizationId, action, subject])
+  @@index([organizationId])
+  @@index([action, subject])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  grantedById  String?
+  createdAt    DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id           String    @id @default(uuid())
+  userId       String
+  roleId       String
+  assignedById String?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  role         Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([expiresAt])
+  @@map("user_roles")
+}
+
+model UserPropertyNode {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String
+  accessLevel    String       @default("READ_ONLY")
+  grantedById    String?
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  propertyNodeId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode   PropertyNode @relation(fields: [propertyNodeId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyNodeId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([propertyNodeId])
+  @@map("user_property_nodes")
+}
+
+model Session {
+  id                String                @id @default(uuid())
+  userId            String
+  deviceId          String?
+  deviceName        String?
+  deviceFingerprint String?
+  ipAddress         String?
+  lastIpAddress     String?
+  userAgent         String?
+  country           String?
+  city              String?
+  lastActiveAt      DateTime              @default(now())
+  createdAt         DateTime              @default(now())
+  expiresAt         DateTime
+  isActive          Boolean               @default(true)
+  revokedAt         DateTime?
+  revokedReason     SessionRevokedReason?
+  refreshTokens     RefreshToken[]
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isActive])
+  @@index([isActive])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id                String         @id @default(uuid())
+  sessionId         String
+  userId            String
+  tokenHash         String         @unique
+  familyId          String
+  status            TokenStatus    @default(ACTIVE)
+  expiresAt         DateTime
+  usedAt            DateTime?
+  createdAt         DateTime       @default(now())
+  replacedByTokenId String?
+  replacedBy        RefreshToken?  @relation("TokenChain", fields: [replacedByTokenId], references: [id])
+  replacedFrom      RefreshToken[] @relation("TokenChain")
+  session           Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([familyId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model EmailVerification {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verifications")
+}
+
+model PasswordResetToken {
+  id          String    @id @default(uuid())
+  userId      String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  requestedIp String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model PasswordHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("password_history")
+}
+
+model LoginHistory {
+  id             String        @id @default(uuid())
+  organizationId String?
+  userId         String?
+  sessionId      String?
+  email          String
+  outcome        LoginOutcome
+  ipAddress      String?
+  userAgent      String?
+  deviceName     String?
+  country        String?
+  city           String?
+  failureReason  String?
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([userId, createdAt])
+  @@index([ipAddress, createdAt])
+  @@index([email, createdAt])
+  @@index([outcome, createdAt])
+  @@map("login_history")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  organizationId String?
+  userId         String?
+  userName       String?
+  userRole       String?
+  actorId        String?
+  actorEmail     String?
+  module         String        @default("System")
+  action         AuditAction   @default(RECORD_CREATED)
+  actionType     String?
+  entityType     String?
+  entityId       String?
+  description    String?
+  oldValue       Json?
+  newValue       Json?
+  oldValues      Json?
+  newValues      Json?
+  ipAddress      String?
+  userAgent      String?
+  status         String        @default("SUCCESS")
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  actor          User?         @relation("AuditLogActor", fields: [actorId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([actorId])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
+  @@index([organizationId, action, createdAt])
+  @@map("audit_logs")
+}
+
+model PropertyNode {
+  id                   String                @id @default(uuid())
+  organizationId       String
+  parentId             String?
+  name                 String
+  nodeType             String
+  categoryId           String?
+  typeId               String?
+  sizeSqft             Float?
+  status               String                @default("ACTIVE")
+  address              String?
+  city                 String?
+  state                String?
+  zipCode              String?
+  country              String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  metadata             Json?
+  complaints           Complaint[]
+  owners               Owner[]
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent               PropertyNode?         @relation("PropertyHierarchy", fields: [parentId], references: [id])
+  children             PropertyNode[]        @relation("PropertyHierarchy")
+  tenants              Tenant[]
+  unitTransferHistory  UnitTransferHistory[]
+  userPropertyNodes    UserPropertyNode[]
+  vehicles             Vehicle[]
+  visitorRegistrations VisitorRegistration[]
+  alertBroadcasts      AlertBroadcast[]
+  workOrders           WorkOrder[]
+  parkingAreas         ParkingArea[]
+  securityPosts        SecurityPost[]
+  parkingAllocations   ParkingAllocation[]
+
+  @@index([organizationId])
+  @@index([parentId])
+  @@map("property_nodes")
+}
+
+model Owner {
+  id             String       @id @default(uuid())
+  organizationId String
+  propertyNodeId String
+  firstName      String
+  lastName       String
+  email          String
+  phone          String
+  moveInDate     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  userId         String?      @unique
+  user           User?        @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode   PropertyNode @relation(fields: [propertyNodeId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([propertyNodeId])
+  @@map("owners")
+}
+
+model Tenant {
+  id             String       @id @default(uuid())
+  organizationId String
+  propertyNodeId String
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String
+  leaseStart     DateTime?
+  leaseEnd       DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  userId         String?      @unique
+  user           User?        @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode   PropertyNode @relation(fields: [propertyNodeId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([propertyNodeId])
+  @@map("tenants")
+}
+
+model Vehicle {
+  id                 String              @id @default(uuid())
+  organizationId     String
+  propertyNodeId     String
+  licensePlate       String
+  make               String?
+  model              String?
+  color              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode       PropertyNode        @relation(fields: [propertyNodeId], references: [id], onDelete: Cascade)
+  parkingAllocations ParkingAllocation[]
+  parkingHistory     ParkingHistory[]
+  parkingViolations  ParkingViolation[]
+  parkingSessions    ParkingSession[]
+  parkingReservations ParkingReservation[]
+  parkingPermits     ParkingPermit[]
+  evChargingSessions EVChargingSession[]
+
+  @@unique([organizationId, licensePlate])
+  @@index([organizationId])
+  @@index([propertyNodeId])
+  @@map("vehicles")
+}
+
+model UnitTransferHistory {
+  id              String       @id @default(uuid())
+  organizationId  String
+  propertyNodeId  String
+  previousOwnerId String?
+  newOwnerId      String?
+  transferDate    DateTime     @default(now())
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode    PropertyNode @relation(fields: [propertyNodeId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([propertyNodeId])
+  @@map("unit_transfer_history")
+}
+
+model ComplaintCategory {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  complaints     Complaint[]
+
+  @@index([organizationId])
+  @@map("complaint_categories")
+}
+
+model Complaint {
+  id             String                @id @default(uuid())
+  organizationId String
+  propertyNodeId String?
+  categoryId     String
+  creatorId      String
+  title          String
+  description    String
+  status         ComplaintStatus       @default(NEW)
+  priority       Priority              @default(MEDIUM)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  assignedToId   String?
+  feedbackRating Int?
+  feedbackText   String?
+  attachments    ComplaintAttachment[]
+  comments       ComplaintComment[]
+  history        ComplaintHistory[]
+  assignedTo     User?                 @relation("ComplaintAssignee", fields: [assignedToId], references: [id])
+  category       ComplaintCategory     @relation(fields: [categoryId], references: [id])
+  creator        User                  @relation("ComplaintCreator", fields: [creatorId], references: [id])
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode   PropertyNode?         @relation(fields: [propertyNodeId], references: [id], onDelete: Cascade)
+  facilityId     String?
+  facility       Facility?             @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  workOrders     WorkOrder[]
+
+  @@index([organizationId])
+  @@index([propertyNodeId])
+  @@index([facilityId])
+  @@index([categoryId])
+  @@index([creatorId])
+  @@index([assignedToId])
+  @@map("complaints")
+}
+
+model ComplaintComment {
+  id          String    @id @default(uuid())
+  complaintId String
+  userId      String
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([complaintId])
+  @@index([userId])
+  @@map("complaint_comments")
+}
+
+model ComplaintAttachment {
+  id          String    @id @default(uuid())
+  complaintId String
+  fileUrl     String
+  fileName    String
+  fileType    String?
+  fileSize    Int?
+  createdAt   DateTime  @default(now())
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+  @@map("complaint_attachments")
+}
+
+model ComplaintHistory {
+  id          String           @id @default(uuid())
+  complaintId String
+  statusFrom  ComplaintStatus?
+  statusTo    ComplaintStatus?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  complaint   Complaint        @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+  @@map("complaint_history")
+}
+
+model Visitor {
+  id                 String                @id @default(uuid())
+  organizationId     String
+  firstName          String
+  lastName           String?
+  phone              String?
+  email              String?
+  idNumber           String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  registrations      VisitorRegistration[]
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parkingAllocations ParkingAllocation[]
+
+  @@index([organizationId])
+  @@map("visitors")
+}
+
+model VisitorRegistration {
+  id              String        @id @default(uuid())
+  organizationId  String
+  visitorId       String
+  propertyNodeId  String
+  purpose         String?
+  expectedArrival DateTime?
+  requiresParking Boolean       @default(false)
+  vehiclePlate    String?
+  status          VisitorStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  logs            VisitorLog[]
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode    PropertyNode  @relation(fields: [propertyNodeId], references: [id], onDelete: Cascade)
+  visitor         Visitor       @relation(fields: [visitorId], references: [id])
+
+  @@index([organizationId])
+  @@index([visitorId])
+  @@index([propertyNodeId])
+  @@map("visitor_registrations")
+}
+
+model VisitorLog {
+  id             String              @id @default(uuid())
+  registrationId String
+  checkInTime    DateTime?
+  checkOutTime   DateTime?
+  notes          String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  registration   VisitorRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+  @@map("visitor_logs")
+}
+
+model Facility {
+  id                   String            @id @default(uuid())
+  organizationId       String
+  name                 String
+  facilityCode         String?
+  category             String            @default("Recreation")
+  description          String?
+  shortDescription     String?
+  imageUrl             String?
+  galleryUrls          String[]          @default([])
+  status               String            @default("ACTIVE") // ACTIVE, INACTIVE, TEMPORARILY_UNAVAILABLE, UNDER_MAINTENANCE, PERMANENTLY_CLOSED
+  capacity             Int?
+  hourlyRate           Float?
+  depositAmount        Float?            @default(0)
+  rules                String[]          @default([])
+  contactPerson        String?
+  contactNumber        String?
+  buildingId           String?
+  towerId              String?
+  floorId              String?
+  unitId               String?
+  locationName         String?
+  bookingConfig        Json?
+  availabilitySchedule Json?
+  eligibilityRules     Json?
+  approvalConfig       Json?
+  pricingConfig        Json?
+  cancellationRules    Json?
+  customFields         Json?
+  maintenanceBlocks    Json?
+  notificationConfig   Json?
+  isActive             Boolean           @default(true)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  organization         Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings             FacilityBooking[]
+  complaints           Complaint[]
+  workOrders           WorkOrder[]
+
+  @@index([organizationId])
+  @@map("facilities")
+}
+
+model FacilityBooking {
+  id                String        @id @default(uuid())
+  organizationId    String
+  facilityId        String
+  userId            String
+  startTime         DateTime
+  endTime           DateTime
+  status            BookingStatus @default(PENDING)
+  totalCost         Float?
+  depositAmount     Float?
+  attendeeCount     Int?          @default(1)
+  notes             String?
+  purpose           String?
+  rejectionReason   String?
+  customFieldValues Json?
+  pricingBreakdown  Json?
+  depositPaid       Boolean       @default(false)
+  depositReturned   Boolean       @default(false)
+  checkInTime       DateTime?
+  checkOutTime      DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  facility          Facility      @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id])
+  workOrders        WorkOrder[]
+
+  @@index([organizationId])
+  @@index([facilityId])
+  @@index([userId])
+  @@map("facility_bookings")
+}
+
+model DocumentCategory {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documents      Document[]
+
+  @@index([organizationId])
+  @@map("document_categories")
+}
+
+model Document {
+  id             String           @id @default(uuid())
+  organizationId String
+  categoryId     String
+  title          String
+  fileUrl        String
+  fileType       String?
+  fileSize       Int?
+  version        Int              @default(1)
+  uploadedById   String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  category       DocumentCategory @relation(fields: [categoryId], references: [id])
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([uploadedById])
+  @@map("documents")
+}
+
+model AssetCategory {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assets         Asset[]
+
+  @@index([organizationId])
+  @@map("asset_categories")
+}
+
+model Asset {
+  id                    String          @id @default(uuid())
+  organizationId        String
+  categoryId            String
+  name                  String
+  serialNumber          String?
+  purchaseDate          DateTime?
+  purchasePrice         Float?
+  warrantyExpiry        DateTime?
+  warrantyDetails       String?
+  expectedLifespanYears Int?
+  status                AssetStatus     @default(ACTIVE)
+  location              String?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  documents             AssetDocument[]
+  category              AssetCategory   @relation(fields: [categoryId], references: [id])
+  organization          Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workOrders            WorkOrder[]
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@map("assets")
+}
+
+model AssetDocument {
+  id        String   @id @default(uuid())
+  assetId   String
+  title     String
+  fileUrl   String
+  createdAt DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+  @@map("asset_documents")
+}
+
+model MaintenancePlan {
+  id                  String                 @id @default(uuid())
+  organizationId      String
+  title               String
+  planCode            String?
+  description         String?
+  category            String?                @default("HVAC & Subsystems")
+  maintenanceType     String?                @default("Preventive")
+  priority            Priority               @default(MEDIUM)
+  status              String                 @default("ACTIVE")
+  frequency           String
+  nextDueDate         DateTime?
+  lastCompletedDate   DateTime?
+  buildingId          String?
+  towerId             String?
+  floorId             String?
+  unitId              String?
+  locationScope       String?                @default("PROPERTY")
+  spatialNodes        Json?
+  locationName        String?
+  facilityIds         String[]               @default([])
+  assetIds            String[]               @default([])
+  targetAssetCategory String?
+  scheduleConfig      Json?
+  assignmentConfig    Json?
+  blackoutConfig      Json?
+  lifecycleConfig     Json?
+  complianceScore     Float?                 @default(100.0)
+  complianceStats     Json?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  checklists          MaintenanceChecklist[]
+  organization        Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workOrders          WorkOrder[]
+
+  @@index([organizationId])
+  @@map("maintenance_plans")
+}
+
+model MaintenanceChecklist {
+  id                       String          @id @default(uuid())
+  planId                   String
+  taskName                 String
+  description              String?
+  instructions             String?
+  sequence                 Int?            @default(1)
+  taskCategory             String?         @default("General")
+  taskType                 String?         @default("CHECKBOX")
+  options                  String[]        @default([])
+  isMandatory              Boolean         @default(true)
+  photoRequired            Boolean         @default(false)
+  signatureRequired        Boolean         @default(false)
+  supervisorSignoff        Boolean         @default(false)
+  estimatedDurationMinutes Int?            @default(15)
+  config                   Json?
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+  plan                     MaintenancePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@map("maintenance_checklists")
+}
+
+model WorkOrder {
+  id             String               @id @default(uuid())
+  organizationId String
+  planId         String?
+  title          String
+  description    String?
+  status         WorkOrderStatus      @default(OPEN)
+  priority       Priority             @default(MEDIUM)
+  assignedToId   String?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  actualHours    Float?
+  afterPhotos    String[]             @default([])
+  assetId        String?
+  beforePhotos   String[]             @default([])
+  complaintId    String?
+  estimatedHours Float?
+  materialsUsed  String[]             @default([])
+  propertyNodeId String?
+  remarks        String?
+  residentId     String?
+  woNumber       String?              @unique
+  history        MaintenanceHistory[]
+  checklists     WorkOrderChecklist[]
+  asset          Asset?               @relation(fields: [assetId], references: [id])
+  assignedTo     User?                @relation("WorkOrderAssignedTo", fields: [assignedToId], references: [id])
+  complaint      Complaint?           @relation(fields: [complaintId], references: [id])
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan           MaintenancePlan?     @relation(fields: [planId], references: [id])
+  propertyNode   PropertyNode?        @relation(fields: [propertyNodeId], references: [id])
+  facilityId     String?
+  facility           Facility?            @relation(fields: [facilityId], references: [id])
+  facilityBookingId  String?
+  facilityBooking    FacilityBooking?     @relation(fields: [facilityBookingId], references: [id])
+  resident           User?                @relation("WorkOrderResident", fields: [residentId], references: [id])
+
+  @@index([organizationId])
+  @@index([planId])
+  @@index([assignedToId])
+  @@index([complaintId])
+  @@index([propertyNodeId])
+  @@index([facilityId])
+  @@index([facilityBookingId])
+  @@index([residentId])
+  @@index([assetId])
+  @@map("work_orders")
+}
+
+model WorkOrderChecklist {
+  id                  String    @id @default(uuid())
+  workOrderId         String
+  taskName            String
+  description         String?
+  taskType            String?   @default("CHECKBOX")
+  isMandatory         Boolean?  @default(true)
+  photoRequired       Boolean?  @default(false)
+  signatureRequired   Boolean?  @default(false)
+  supervisorSignoff   Boolean?  @default(false)
+  isCompleted         Boolean   @default(false)
+  completedAt         DateTime?
+  resultValue         String?
+  photoUrls           String[]  @default([])
+  technicianNotes     String?
+  technicianSignature String?
+  supervisorVerified  Boolean?  @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  workOrder           WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@map("work_order_checklists")
+}
+
+model MaintenanceHistory {
+  id          String    @id @default(uuid())
+  workOrderId String
+  notes       String
+  createdAt   DateTime  @default(now())
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@map("maintenance_history")
+}
+
+model Incident {
+  id             String         @id @default(uuid())
+  organizationId String
+  title          String
+  description    String
+  reportedById   String
+  incidentDate   DateTime
+  status         IncidentStatus @default(REPORTED)
+  severity       Severity       @default(MINOR)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([reportedById])
+  @@map("incidents")
+}
+
+model PatrolRoute {
+  id             String             @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  checkpoints    PatrolCheckpoint[]
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("patrol_routes")
+}
+
+model PatrolCheckpoint {
+  id         String      @id @default(uuid())
+  routeId    String
+  name       String
+  location   String?
+  latitude   Float?
+  longitude  Float?
+  orderIndex Int
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  route      PatrolRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  logs       PatrolLog[]
+
+  @@index([routeId])
+  @@map("patrol_checkpoints")
+}
+
+model PatrolLog {
+  id           String           @id @default(uuid())
+  checkpointId String
+  guardId      String
+  latitude     Float?
+  longitude    Float?
+  scannedAt    DateTime         @default(now())
+  notes        String?
+  createdAt    DateTime         @default(now())
+  checkpoint   PatrolCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+
+  @@index([checkpointId])
+  @@index([guardId])
+  @@map("patrol_logs")
+}
+
+model SecurityPost {
+  id             String                   @id @default(uuid())
+  organizationId String
+  name           String
+  postType       String
+  description    String?
+  duties         String[]                 @default([])
+  propertyNodeId String?
+  parkingAreaId  String?
+  isActive       Boolean                  @default(true)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode   PropertyNode?            @relation(fields: [propertyNodeId], references: [id], onDelete: SetNull)
+  parkingArea    ParkingArea?             @relation(fields: [parkingAreaId], references: [id], onDelete: SetNull)
+  assignments    SecurityPostAssignment[]
+
+  @@index([organizationId, isActive])
+  @@index([propertyNodeId])
+  @@index([parkingAreaId])
+  @@map("security_posts")
+}
+
+model SecurityPostAssignment {
+  id             String       @id @default(uuid())
+  organizationId String
+  postId         String
+  guardId        String
+  shiftName      String       @default("General")
+  startsAt       DateTime?
+  endsAt         DateTime?
+  daysOfWeek     String[]     @default([])
+  notes          String?
+  isActive       Boolean      @default(true)
+  assignedById   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  post           SecurityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  guard          User         @relation(fields: [guardId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, guardId, isActive])
+  @@index([postId, isActive])
+  @@index([startsAt, endsAt])
+  @@map("security_post_assignments")
+}
+
+model NotificationTemplate {
+  id             String           @id @default(uuid())
+  organizationId String?
+  name           String
+  subject        String
+  body           String
+  type           NotificationType
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([organizationId])
+  @@map("notification_templates")
+}
+
+model Notification {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  title          String
+  message        String
+  type           NotificationType
+  isRead         Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@map("notifications")
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
+}
+
+model Setting {
+  id             String   @id @default(uuid())
+  organizationId String?
+  key            String
+  value          Json
+  description    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("settings")
+}
+
+model ModuleMaster {
+  id               String               @id @default(uuid())
+  code             String               @unique
+  name             String
+  description      String?
+  isActive         Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  organizations    OrganizationModule[]
+  packageModules   PackageModule[]
+  organizationAddons OrganizationAddon[]
+  dependencies     ModuleDependency[]   @relation("ModuleToDependencies")
+  dependentModules ModuleDependency[]   @relation("ModuleIsDependencyFor")
+
+  @@map("master_modules")
+}
+
+model ModuleDependency {
+  id                 String   @id @default(uuid())
+  moduleId           String
+  dependencyModuleId String
+  isRequired         Boolean  @default(true)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  module           ModuleMaster @relation("ModuleToDependencies", fields: [moduleId], references: [id], onDelete: Cascade)
+  dependencyModule ModuleMaster @relation("ModuleIsDependencyFor", fields: [dependencyModuleId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, dependencyModuleId])
+  @@index([moduleId])
+  @@index([dependencyModuleId])
+  @@map("module_dependencies")
+}
+
+model PropertyCategoryMaster {
+  id            String                         @id @default(uuid())
+  code          String                         @unique
+  name          String
+  description   String?
+  isActive      Boolean                        @default(true)
+  createdAt     DateTime                       @default(now())
+  updatedAt     DateTime                       @updatedAt
+  propertyTypes PropertyTypeMaster[]
+  organizations OrganizationPropertyCategory[]
+
+  @@map("master_property_categories")
+}
+
+model PropertyTypeMaster {
+  id            String                     @id @default(uuid())
+  categoryId    String
+  code          String                     @unique
+  name          String
+  description   String?
+  isActive      Boolean                    @default(true)
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  category      PropertyCategoryMaster     @relation(fields: [categoryId], references: [id])
+  organizations OrganizationPropertyType[]
+
+  @@index([categoryId])
+  @@map("master_property_types")
+}
+
+model OrganizationModule {
+  id             String       @id @default(uuid())
+  organizationId String
+  moduleId       String
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  module         ModuleMaster @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, moduleId])
+  @@index([organizationId])
+  @@index([moduleId])
+  @@map("org_modules")
+}
+
+model OrganizationAddon {
+  id             String       @id @default(uuid())
+  organizationId String
+  moduleId       String
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  module         ModuleMaster @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, moduleId])
+  @@index([organizationId])
+  @@index([moduleId])
+  @@map("org_addons")
+}
+
+model PackageMaster {
+  id                   String                @id @default(uuid())
+  code                 String                @unique
+  name                 String
+  description          String?
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  packageModules       PackageModule[]
+  organizationPackages OrganizationPackage[]
+
+  @@map("master_packages")
+}
+
+model PackageModule {
+  id        String        @id @default(uuid())
+  packageId String
+  moduleId  String
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  package   PackageMaster @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  module    ModuleMaster  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, moduleId])
+  @@index([packageId])
+  @@index([moduleId])
+  @@map("package_modules")
+}
+
+model OrganizationPackage {
+  id             String        @id @default(uuid())
+  organizationId String
+  packageId      String
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  package        PackageMaster @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, packageId])
+  @@index([organizationId])
+  @@index([packageId])
+  @@map("org_packages")
+}
+
+model OrganizationPropertyCategory {
+  id             String                 @id @default(uuid())
+  organizationId String
+  categoryId     String
+  isActive       Boolean                @default(true)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  category       PropertyCategoryMaster @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, categoryId])
+  @@index([organizationId])
+  @@index([categoryId])
+  @@map("org_property_categories")
+}
+
+model OrganizationPropertyType {
+  id             String             @id @default(uuid())
+  organizationId String
+  typeId         String
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           PropertyTypeMaster @relation(fields: [typeId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, typeId])
+  @@index([organizationId])
+  @@index([typeId])
+  @@map("org_property_types")
+}
+
+model TechnicianProfile {
+  id                String       @id @default(uuid())
+  organizationId    String
+  userId            String       @unique
+  employeeId        String?
+  specialization    String?
+  experience        Int?
+  shift             String?
+  joiningDate       DateTime?
+  emergencyContact  String?
+  skills            String[]
+  availability      String?
+  workingHours      String?
+  status            String       @default("ACTIVE")
+  assignedTowers    String[]
+  assignedBuildings String[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("technician_profiles")
+}
+
+enum TokenStatus {
+  ACTIVE
+  USED
+  REVOKED
+}
+
+enum SessionRevokedReason {
+  LOGOUT
+  GLOBAL_LOGOUT
+  ADMIN_FORCED
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+  SECURITY_BREACH
+  EXPIRED
+}
+
+enum LoginOutcome {
+  SUCCESS
+  INVALID_PASSWORD
+  ACCOUNT_NOT_FOUND
+  ACCOUNT_LOCKED
+  ACCOUNT_INACTIVE
+  EMAIL_NOT_VERIFIED
+  MFA_FAILED
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  REGISTER
+  TOKEN_REFRESH
+  TOKEN_REUSE_DETECTED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  EMAIL_VERIFIED
+  EMAIL_VERIFICATION_RESENT
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  USER_CREATED
+  USER_UPDATED
+  USER_DEACTIVATED
+  USER_DELETED
+  ROLE_ASSIGNED
+  ROLE_REVOKED
+  SESSION_REVOKED
+  ALL_SESSIONS_REVOKED
+  RECORD_CREATED
+  RECORD_UPDATED
+  RECORD_DELETED
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  REJECT
+  ASSIGN
+  COMPLETE
+  ACTIVATE
+  DEACTIVATE
+  SUSPEND
+  VIEW
+  EXPORT
+  IMPORT
+  UPLOAD
+  ARCHIVE
+  RESTORE
+  ROLE_CHANGE
+  PERMISSION_UPDATE
+  STATUS_CHANGE
+  CUSTOM_ACTION
+}
+
+enum UnitType {
+  RESIDENTIAL
+  COMMERCIAL
+  PARKING
+  STORAGE
+}
+
+enum UnitStatus {
+  OCCUPIED
+  VACANT
+  UNDER_MAINTENANCE
+}
+
+enum ComplaintStatus {
+  NEW
+  OPEN
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  ON_HOLD
+  WAITING_FOR_PARTS
+  PENDING_APPROVAL
+  RESOLVED
+  CLOSED
+  REOPENED
+  CANCELLED
+  // New workflow statuses
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  WORK_ORDER_CREATED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum VisitorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  DRAFT
+  PENDING
+  CONFIRMED
+  APPROVED
+  REJECTED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+  EXPIRED
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  IN_REPAIR
+  DISPOSED
+}
+
+enum WorkOrderStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+  PENDING_ACCEPTANCE
+  VERIFYING
+  PENDING_FEEDBACK
+  CLOSED
+  // New workflow statuses
+  CREATED
+  ACCEPTED
+  TRAVELLING
+  WAITING_PARTS
+  WAITING_APPROVAL
+}
+
+enum IncidentStatus {
+  REPORTED
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum Severity {
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+model ParkingArea {
+  id             String        @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  type           String?       @default("INDOOR") // INDOOR, OUTDOOR, BASEMENT, ROOFTOP
+  totalSlots     Int           @default(0)
+  propertyNodeId String? // Links to a building or tower
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyNode   PropertyNode? @relation(fields: [propertyNodeId], references: [id])
+  slots          ParkingSlot[]
+  sessions       ParkingSession[]
+  reservations   ParkingReservation[]
+  securityPosts  SecurityPost[]
+
+  @@index([organizationId])
+  @@index([propertyNodeId])
+  @@map("parking_areas")
+}
+
+model ParkingSlot {
+  id                String              @id @default(uuid())
+  organizationId    String
+  areaId            String
+  slotNumber        String
+  code              String?
+  zone              String?
+  size              String?             @default("STANDARD") // STANDARD, COMPACT, LARGE, OVERSIZED
+  type              String              @default("STANDARD") // STANDARD, COMPACT, HANDICAPPED, EV_CHARGING, VISITOR
+  status            String              @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED, BLOCKED, MAINTENANCE, OUT_OF_SERVICE
+  isEv              Boolean             @default(false)
+  isAccessible      Boolean             @default(false)
+  isReserved        Boolean             @default(false)
+  maintenanceStatus String?
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  area              ParkingArea         @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  allocations       ParkingAllocation[]
+  history           ParkingHistory[]
+  violations        ParkingViolation[]
+  sessions          ParkingSession[]
+  reservations      ParkingReservation[]
+  permits           ParkingPermit[]
+  evSessions        EVChargingSession[]
+
+  @@unique([areaId, slotNumber])
+  @@index([organizationId])
+  @@index([areaId])
+  @@map("parking_slots")
+}
+
+model ParkingAllocation {
+  id             String        @id @default(uuid())
+  organizationId String
+  slotId         String
+  vehicleId      String?
+  userId         String? // Resident/Tenant/Owner
+  visitorId      String? // If assigned to visitor
+  propertyNodeId String? // The unit this slot is allocated to
+  allocationType String        @default("PERMANENT") // PERMANENT, TEMPORARY, VISITOR
+  isTemporary    Boolean       @default(false)
+  originalSlotId String?
+  temporaryReason String?
+  startDate      DateTime      @default(now())
+  endDate        DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slot           ParkingSlot   @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle?      @relation(fields: [vehicleId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id])
+  visitor        Visitor?      @relation(fields: [visitorId], references: [id])
+  propertyNode   PropertyNode? @relation(fields: [propertyNodeId], references: [id])
+
+  @@index([organizationId])
+  @@index([slotId])
+  @@index([vehicleId])
+  @@index([userId])
+  @@index([visitorId])
+  @@index([propertyNodeId])
+  @@map("parking_allocations")
+}
+
+model ParkingHistory {
+  id             String       @id @default(uuid())
+  organizationId String
+  slotId         String
+  vehicleId      String?
+  checkInTime    DateTime     @default(now())
+  checkOutTime   DateTime?
+  status         String       @default("ACTIVE") // ACTIVE, COMPLETED
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slot           ParkingSlot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
+
+  @@index([organizationId])
+  @@index([slotId])
+  @@index([vehicleId])
+  @@map("parking_history")
+}
+
+model ParkingViolation {
+  id             String       @id @default(uuid())
+  organizationId String
+  slotId         String?
+  vehicleId      String?
+  reportedById   String
+  violationType  String // UNAUTHORIZED_PARKING, OVERSTAY, WRONG_SLOT, IMPROPER_PARKING
+  description    String?
+  fineAmount     Float?
+  status         String       @default("REPORTED") // REPORTED, UNDER_REVIEW, SECURITY_NOTIFIED, WARNING_ISSUED, TOWING_REQUESTED, RESOLVED, DISMISSED
+  violationDate  DateTime     @default(now())
+  attachments    String[]     @default([])
+  actionTaken    String?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slot           ParkingSlot? @relation(fields: [slotId], references: [id])
+  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
+  reportedBy     User         @relation("ReportedViolations", fields: [reportedById], references: [id])
+
+  @@index([organizationId])
+  @@index([slotId])
+  @@index([vehicleId])
+  @@index([reportedById])
+  @@map("parking_violations")
+}
+
+model ParkingConfiguration {
+  id                      String       @id @default(uuid())
+  organizationId          String       @unique
+  parkingMode             String       @default("RESIDENTIAL") // RESIDENTIAL, COMMERCIAL, OFFICE, RETAIL, HOSPITALITY, HOSPITAL, INSTITUTIONAL, INDUSTRIAL, STUDENT_HOUSING, MIXED
+  allocationModel         String       @default("DEDICATED") // DEDICATED, SHARED_POOL, HYBRID, UNASSIGNED
+  visitorParkingEnabled   Boolean      @default(true)
+  reservationEnabled      Boolean      @default(true)
+  paidParkingEnabled      Boolean      @default(false)
+  evParkingEnabled        Boolean      @default(true)
+  qrAccessEnabled         Boolean      @default(true)
+  rfidAccessEnabled       Boolean      @default(true)
+  anprEnabled             Boolean      @default(true)
+  temporaryParkingEnabled Boolean      @default(true)
+  violationsEnabled       Boolean      @default(true)
+  subscriptionsEnabled    Boolean      @default(false)
+  dynamicPricingEnabled   Boolean      @default(false)
+  settings                Json?        @default("{}")
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("parking_configurations")
+}
+
+model ParkingRule {
+  id             String       @id @default(uuid())
+  organizationId String
+  name           String
+  ruleType       String // MAX_VEHICLES_PER_UNIT, MAX_ALLOCATED_BAYS, EMPLOYEE_HOURS, VISITOR_DURATION, FREE_PARKING_DURATION, HOURLY_RATE, PEAK_PRICING, VEHICLE_RESTRICTION
+  conditions     Json         @default("{}")
+  actions        Json         @default("{}")
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("parking_rules")
+}
+
+model ParkingSession {
+  id              String       @id @default(uuid())
+  organizationId  String
+  vehicleId       String?
+  licensePlate    String
+  userId          String?
+  slotId          String?
+  areaId          String?
+  entryTime       DateTime     @default(now())
+  exitTime        DateTime?
+  durationMinutes Int?
+  accessPoint     String?      @default("Main Gate")
+  entryMethod     String       @default("MANUAL") // ANPR, RFID, QR, MOBILE, MANUAL
+  exitMethod      String?
+  totalAmount     Float        @default(0.0)
+  paymentStatus   String       @default("WAIVED") // PENDING, PAID, WAIVED
+  sessionStatus   String       @default("ACTIVE") // ACTIVE, COMPLETED, OVERSTAY, DISPUTED
+  permitId        String?
+  reservationId   String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slot            ParkingSlot? @relation(fields: [slotId], references: [id])
+  area            ParkingArea? @relation(fields: [areaId], references: [id])
+  vehicle         Vehicle?     @relation(fields: [vehicleId], references: [id])
+  user            User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([slotId])
+  @@index([vehicleId])
+  @@index([userId])
+  @@index([licensePlate])
+  @@map("parking_sessions")
+}
+
+model ParkingReservation {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String?
+  vehicleId      String?
+  slotId         String?
+  areaId         String?
+  startTime      DateTime
+  endTime        DateTime
+  parkingType    String       @default("STANDARD") // STANDARD, VISITOR, EV_CHARGING, ACCESSIBLE, VIP
+  status         String       @default("CONFIRMED") // CONFIRMED, CHECKED_IN, COMPLETED, CANCELLED, EXPIRED
+  qrCode         String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slot           ParkingSlot? @relation(fields: [slotId], references: [id])
+  area           ParkingArea? @relation(fields: [areaId], references: [id])
+  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([slotId])
+  @@index([userId])
+  @@index([startTime, endTime])
+  @@map("parking_reservations")
+}
+
+model ParkingPermit {
+  id             String       @id @default(uuid())
+  organizationId String
+  permitNumber   String
+  permitType     String       @default("RESIDENT") // RESIDENT, TENANT, VISITOR, EMPLOYEE, CONTRACTOR, VIP, TEMPORARY, ACCESSIBLE, SERVICE
+  userId         String?
+  vehicleId      String?
+  slotId         String?
+  validFrom      DateTime     @default(now())
+  validTo        DateTime?
+  status         String       @default("ACTIVE") // ACTIVE, SUSPENDED, EXPIRED, REVOKED
+  qrCode         String?
+  metadata       Json?        @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slot           ParkingSlot? @relation(fields: [slotId], references: [id])
+  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
+  user           User?        @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, permitNumber])
+  @@index([organizationId])
+  @@index([slotId])
+  @@index([userId])
+  @@map("parking_permits")
+}
+
+model ParkingRate {
+  id                  String       @id @default(uuid())
+  organizationId      String
+  name                String
+  rateType            String       @default("HOURLY") // FREE, FLAT, HOURLY, DAILY, MONTHLY, SUBSCRIPTION
+  baseAmount          Float        @default(0.0)
+  hourlyRate          Float        @default(0.0)
+  gracePeriodMinutes  Int          @default(15)
+  maxDailyAmount      Float?
+  overnightAmount     Float?
+  overstayPenaltyRate Float?
+  vehicleType         String?      @default("CAR")
+  isActive            Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("parking_rates")
+}
+
+model ParkingAccessEvent {
+  id               String       @id @default(uuid())
+  organizationId   String
+  eventType        String // VEHICLE_ENTRY, VEHICLE_EXIT, VEHICLE_DETECTED, ACCESS_GRANTED, ACCESS_DENIED
+  source           String       @default("MANUAL") // ANPR, RFID, QR, MOBILE_APP, MANUAL
+  deviceIdentifier String?
+  licensePlate     String?
+  confidenceScore  Float?
+  bayCode          String?
+  payload          Json?        @default("{}")
+  timestamp        DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([eventType])
+  @@index([licensePlate])
+  @@map("parking_access_events")
+}
+
+model EVChargingSession {
+  id                 String       @id @default(uuid())
+  organizationId     String
+  slotId             String
+  vehicleId          String?
+  userId             String?
+  startTime          DateTime     @default(now())
+  endTime            DateTime?
+  energyConsumedKwh  Float        @default(0.0)
+  chargingStatus     String       @default("CHARGING") // CHARGING, COMPLETED, FAULT, DISCONNECTED
+  feeAmount          Float        @default(0.0)
+  paymentStatus      String       @default("WAIVED") // PENDING, PAID, WAIVED
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  slot               ParkingSlot  @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  vehicle            Vehicle?     @relation(fields: [vehicleId], references: [id])
+  user               User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([slotId])
+  @@index([vehicleId])
+  @@index([userId])
+  @@map("ev_charging_sessions")
+}
+
+enum AlertType {
+  EMERGENCY
+  MAINTENANCE
+  ANNOUNCEMENT
+}
+
+enum AlertAudience {
+  ALL
+  RESIDENTS
+  STAFF
+  SPECIFIC_NODE
+}
+
+model AlertBroadcast {
+  id             String        @id @default(uuid())
+  organizationId String
+  title          String
+  message        String
+  type           AlertType     @default(ANNOUNCEMENT)
+  priority       Priority      @default(MEDIUM)
+  audience       AlertAudience @default(ALL)
+  targetNodeId   String?       // Used if audience is SPECIFIC_NODE
+  createdById    String
+  status         String        @default("SENT") // DRAFT, SENT
+  sentAt         DateTime?     @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  targetNode     PropertyNode? @relation(fields: [targetNodeId], references: [id])
+  createdBy      User          @relation(fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@index([targetNodeId])
+  @@index([createdById])
+  @@map("alert_broadcasts")
+}
+
