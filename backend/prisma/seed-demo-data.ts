@@ -36,8 +36,8 @@ async function seedDemoData() {
   console.log(`🏢 Target Organization: "${org.name}" (ID: ${orgId})`);
 
   // Ensure default resident roles exist for this organization
-  const ownerRole = await prisma.role.findFirst({ where: { name: 'UNIT_OWNER' } });
-  const tenantRole = await prisma.role.findFirst({ where: { name: 'TENANT' } });
+  const ownerRole = await prisma.role.findFirst({ where: { name: 'UNIT_OWNER', organizationId: orgId } });
+  const tenantRole = await prisma.role.findFirst({ where: { name: 'TENANT', organizationId: orgId } });
   const orgAdmin = await prisma.user.findFirst({
     where: { organizationId: orgId },
   });
@@ -122,6 +122,22 @@ async function seedDemoData() {
     }
     buildings.push(node);
     console.log(`   ✓ Building: ${node.name}`);
+  }
+
+  const buildingManager = await prisma.user.findFirst({
+    where: { email: 'manager@tamilapartments.com', organizationId: orgId },
+  });
+  if (buildingManager) {
+    await prisma.userPropertyNode.createMany({
+      data: buildings.map((b) => ({
+        organizationId: orgId,
+        userId: buildingManager.id,
+        propertyNodeId: b.id,
+        accessLevel: 'MANAGE',
+      })),
+      skipDuplicates: true,
+    });
+    console.log('   ✓ Building manager assigned to all buildings');
   }
 
   // -------------------------------------------------------------

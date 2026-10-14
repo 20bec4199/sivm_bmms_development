@@ -250,6 +250,98 @@ async function main() {
     });
   }
 
+  console.log('Seeding demo organization (Tamil Apartments)...');
+
+  let demoOrg = await prisma.organization.findFirst({ where: { name: 'Tamil Apartments' } });
+  if (!demoOrg) {
+    demoOrg = await prisma.organization.create({
+      data: {
+        name: 'Tamil Apartments',
+        code: 'TAMILAPT',
+        type: 'Property Management',
+        industry: 'Real Estate & Property Management',
+        size: '100-500',
+        subscriptionPlan: 'Enterprise',
+        status: 'ACTIVE',
+      },
+    });
+  }
+
+  const masterModules = await prisma.moduleMaster.findMany();
+  for (const m of masterModules) {
+    await prisma.organizationModule.upsert({
+      where: { organizationId_moduleId: { organizationId: demoOrg.id, moduleId: m.id } },
+      update: { isActive: true },
+      create: { organizationId: demoOrg.id, moduleId: m.id },
+    });
+  }
+
+  const masterCategories = await prisma.propertyCategoryMaster.findMany();
+  for (const c of masterCategories) {
+    await prisma.organizationPropertyCategory.upsert({
+      where: { organizationId_categoryId: { organizationId: demoOrg.id, categoryId: c.id } },
+      update: { isActive: true },
+      create: { organizationId: demoOrg.id, categoryId: c.id },
+    });
+  }
+
+  const BM_EXCLUDED_SUBJECTS = ['Organization', 'Role', 'Permission', 'Settings', 'ALL'];
+  const DEMO_ORG_ROLES = [
+    { name: 'ORGANIZATION_ADMIN', desc: 'Organization Administrator with full access to tenant management', isDefault: true, filter: () => true },
+    { name: 'BUILDING_MANAGER', desc: 'Manager of specific buildings and facilities', isDefault: false, filter: (p: { subject: string }) => !BM_EXCLUDED_SUBJECTS.includes(p.subject) },
+    { name: 'TECHNICIAN', desc: 'Maintenance and service staff', isDefault: false, filter: (p: { subject: string; action: string }) => ['WorkOrder', 'WorkOrderComment', 'WorkOrderAttachment'].includes(p.subject) && ['READ', 'LIST', 'UPDATE', 'CREATE'].includes(p.action) },
+    { name: 'SECURITY_GUARD', desc: 'Security staff for visitor access, incidents, and patrols', isDefault: false, filter: (p: { subject: string; action: string }) => ['Incident', 'VisitorRegistration'].includes(p.subject) && ['READ', 'CREATE', 'UPDATE'].includes(p.action) },
+    { name: 'RESIDENT', desc: 'Community resident and occupant', isDefault: false, filter: (p: { subject: string; action: string }) => ['Announcement', 'Notification'].includes(p.subject) && p.action === 'READ' },
+    { name: 'UNIT_OWNER', desc: 'Deeded Unit Owner', isDefault: false, filter: (p: { subject: string; action: string }) => ['Unit', 'MaintenanceRequest', 'Invoice', 'Payment', 'Document'].includes(p.subject) && ['READ', 'CREATE'].includes(p.action) },
+    { name: 'TENANT', desc: 'Lease Occupant / Tenant', isDefault: false, filter: (p: { subject: string; action: string }) => ['MaintenanceRequest', 'Document', 'Invoice', 'Notification'].includes(p.subject) && ['READ', 'CREATE'].includes(p.action) },
+  ];
+
+  const demoRoles: Record<string, { id: string }> = {};
+  for (const roleDef of DEMO_ORG_ROLES) {
+    let role = await prisma.role.findFirst({ where: { organizationId: demoOrg.id, name: roleDef.name } });
+    if (!role) {
+      role = await prisma.role.create({
+        data: { organizationId: demoOrg.id, name: roleDef.name, description: roleDef.desc, isDefault: roleDef.isDefault },
+      });
+    }
+    demoRoles[roleDef.name] = role;
+
+    const data = allPermRecords
+      .filter((p) => roleDef.filter(p))
+      .map((p) => ({ roleId: role.id, permissionId: p.id }));
+    await prisma.rolePermission.createMany({ data, skipDuplicates: true });
+  }
+
+  const DEMO_PASSWORD = 'Password123';
+  const demoPasswordHash = await argon2.hash(DEMO_PASSWORD, { type: argon2.argon2id });
+  const demoUsers = [
+    { email: 'admin1@tamilapartments.com', firstName: 'Arjun', lastName: 'Kumar', role: 'ORGANIZATION_ADMIN' },
+    { email: 'admin2@tamilapartments.com', firstName: 'Priya', lastName: 'Sharma', role: 'ORGANIZATION_ADMIN' },
+    { email: 'manager@tamilapartments.com', firstName: 'Suresh', lastName: 'Babu', role: 'BUILDING_MANAGER' },
+  ];
+
+  for (const u of demoUsers) {
+    const user = await prisma.user.upsert({
+      where: { email: u.email },
+      update: { passwordHash: demoPasswordHash, emailVerified: true, isActive: true, organizationId: demoOrg.id },
+      create: {
+        email: u.email,
+        emailNormalized: u.email.toLowerCase(),
+        passwordHash: demoPasswordHash,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        isActive: true,
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        organizationId: demoOrg.id,
+      },
+    });
+    await prisma.userRole.createMany({
+      data: [{ userId: user.id, roleId: demoRoles[u.role].id }],
+      skipDuplicates: true,
+    });
+  }
+
   console.log('RBAC Seeding Complete!');
 }
 
