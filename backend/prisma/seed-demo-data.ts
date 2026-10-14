@@ -391,6 +391,171 @@ async function seedDemoData() {
     console.log(`   ✓ Tenant: ${t.first} ${t.last} -> Unit ${unitNode.unitNumber}`);
   }
 
+  console.log('\n🏊 Seeding Facilities, Asset Catalog, Bookings & Preventive Maintenance...');
+  const facilitySpecs = [
+    { code: 'DEMO-GYM', name: 'Fitness Centre', category: 'Fitness', description: 'Residents gym with cardio and strength equipment.', capacity: 25, rate: 0, building: buildings[0], tower: towers[0], locationName: 'Empire Grand Tower - Ground Floor' },
+    { code: 'DEMO-POOL', name: 'Swimming Pool', category: 'Recreation', description: 'Outdoor community swimming pool.', capacity: 30, rate: 0, building: buildings[0], tower: towers[0], locationName: 'Empire Grand Tower - Pool Deck' },
+    { code: 'DEMO-CLUB', name: 'Community Hall', category: 'Events', description: 'Hall for resident meetings and celebrations.', capacity: 80, rate: 500, building: buildings[2], tower: towers[4], locationName: 'Greenwood Haven Residency - Clubhouse' },
+  ];
+  const facilities: any[] = [];
+  for (const spec of facilitySpecs) {
+    let facility = await prisma.facility.findFirst({ where: { organizationId: orgId, facilityCode: spec.code } });
+    const facilityData = {
+      name: spec.name,
+      facilityCode: spec.code,
+      category: spec.category,
+      description: spec.description,
+      shortDescription: spec.description,
+      status: 'ACTIVE',
+      isActive: true,
+      capacity: spec.capacity,
+      hourlyRate: spec.rate,
+      depositAmount: 0,
+      rules: ['Keep the facility clean', 'Follow posted safety instructions', 'Leave on time for the next booking'],
+      buildingId: spec.building.id,
+      towerId: spec.tower.id,
+      locationName: spec.locationName,
+      bookingConfig: { type: 'SLOT', occupancyMode: 'PRIVATE', slotIntervalMinutes: 60, minDurationMinutes: 60, maxDurationMinutes: 240 },
+      approvalConfig: { type: 'MANUAL' },
+    };
+    facility = facility
+      ? await prisma.facility.update({ where: { id: facility.id }, data: facilityData })
+      : await prisma.facility.create({ data: { ...facilityData, organizationId: orgId } });
+    facilities.push(facility);
+  }
+
+  const assetCategorySpecs = [
+    { name: 'HVAC Equipment', description: 'Air conditioning and ventilation equipment' },
+    { name: 'Water Systems', description: 'Pumps and water treatment equipment' },
+    { name: 'Safety Equipment', description: 'Fire and life-safety equipment' },
+  ];
+  const assetCategories: Record<string, any> = {};
+  for (const spec of assetCategorySpecs) {
+    let category = await prisma.assetCategory.findFirst({ where: { organizationId: orgId, name: spec.name } });
+    category = category
+      ? await prisma.assetCategory.update({ where: { id: category.id }, data: { description: spec.description } })
+      : await prisma.assetCategory.create({ data: { organizationId: orgId, ...spec } });
+    assetCategories[spec.name] = category;
+  }
+
+  const now = new Date();
+  const assetSpecs = [
+    { tag: 'HVAC-2026-0001', serial: 'AC-CH-001', name: 'Rooftop Chiller Unit 1', category: 'HVAC Equipment', location: `${buildings[0].name} - Roof`, status: 'ACTIVE', warrantyDays: 240 },
+    { tag: 'HVAC-2026-0002', serial: 'AHU-EM-014', name: 'Air Handling Unit - Block A', category: 'HVAC Equipment', location: `${buildings[0].name} - Plant Room`, status: 'ACTIVE', warrantyDays: 18 },
+    { tag: 'WTR-2026-0001', serial: 'PMP-GW-002', name: 'Booster Pump 2', category: 'Water Systems', location: `${buildings[2].name} - Pump Room`, status: 'IN_REPAIR', warrantyDays: -120 },
+    { tag: 'SAF-2026-0001', serial: 'FACP-EM-001', name: 'Fire Alarm Control Panel', category: 'Safety Equipment', location: `${buildings[0].name} - Security Room`, status: 'ACTIVE', warrantyDays: 365 },
+  ];
+  const assets: any[] = [];
+  for (const spec of assetSpecs) {
+    const warrantyExpiry = new Date(now.getTime() + spec.warrantyDays * 86400000);
+    let asset = await prisma.asset.findFirst({ where: { organizationId: orgId, serialNumber: { contains: spec.tag } } });
+    const assetData = {
+      name: spec.name,
+      category: { connect: { id: assetCategories[spec.category].id } },
+      serialNumber: `TAG: ${spec.tag} | SN: ${spec.serial}`,
+      purchaseDate: new Date(now.getTime() - 365 * 86400000),
+      purchasePrice: spec.category === 'HVAC Equipment' ? 185000 : 65000,
+      warrantyExpiry,
+      warrantyDetails: 'Demo manufacturer warranty; contact Facilities for service history.',
+      expectedLifespanYears: spec.category === 'Safety Equipment' ? 10 : 12,
+      status: spec.status as 'ACTIVE' | 'IN_REPAIR',
+      location: spec.location,
+    };
+    asset = asset
+      ? await prisma.asset.update({ where: { id: asset.id }, data: assetData })
+      : await prisma.asset.create({ data: { organization: { connect: { id: orgId } }, ...assetData } });
+    assets.push(asset);
+  }
+
+  const bookingSpecs = [
+    { code: 'DEMO-BOOK-GYM', facility: facilities[0], owner: owners[0], days: 3, purpose: 'Morning fitness session', status: 'CONFIRMED' as const },
+    { code: 'DEMO-BOOK-HALL', facility: facilities[2], owner: owners[1], days: 6, purpose: 'Residents committee meeting', status: 'PENDING' as const },
+  ];
+  for (const spec of bookingSpecs) {
+    const startTime = new Date(now.getTime() + spec.days * 86400000);
+    startTime.setHours(9, 0, 0, 0);
+    const endTime = new Date(startTime.getTime() + 2 * 3600000);
+    const notes = `DEMO-SEED:${spec.code}`;
+    const booking = await prisma.facilityBooking.findFirst({ where: { organizationId: orgId, notes } });
+    const bookingData = {
+      organizationId: orgId,
+      facilityId: spec.facility.id,
+      userId: spec.owner.userId,
+      startTime,
+      endTime,
+      status: spec.status,
+      attendeeCount: spec.code === 'DEMO-BOOK-HALL' ? 18 : 2,
+      purpose: spec.purpose,
+      notes,
+      totalCost: spec.facility.hourlyRate ? spec.facility.hourlyRate * 2 : 0,
+      depositAmount: 0,
+      depositPaid: false,
+    };
+    if (booking) {
+      await prisma.facilityBooking.update({ where: { id: booking.id }, data: bookingData });
+    } else {
+      await prisma.facilityBooking.create({ data: bookingData });
+    }
+  }
+
+  const maintenanceSpecs = [
+    {
+      code: 'DEMO-PMP-HVAC-01', title: 'Monthly chiller inspection', category: 'HVAC & Air Distribution Subsystems', asset: assets[0], facility: facilities[0], building: buildings[0], frequency: 'MONTHLY', dueDays: 7,
+      tasks: ['Check refrigerant pressure and operating temperature', 'Clean condenser coils and inspect filters', 'Record vibration and unusual operating noise'],
+    },
+    {
+      code: 'DEMO-PMP-PUMP-01', title: 'Quarterly booster pump service', category: 'Water Systems', asset: assets[2], facility: facilities[2], building: buildings[2], frequency: 'QUARTERLY', dueDays: 14,
+      tasks: ['Inspect pump seals and motor coupling', 'Check inlet and outlet pressure readings', 'Record test results and attach service photos'],
+    },
+    {
+      code: 'DEMO-PMP-FIRE-01', title: 'Monthly fire alarm panel test', category: 'Fire & Life Safety', asset: assets[3], facility: facilities[1], building: buildings[0], frequency: 'MONTHLY', dueDays: 21,
+      tasks: ['Check panel for active faults', 'Test a sample detector and sounder', 'Record test result and notify security desk'],
+    },
+  ];
+  for (const spec of maintenanceSpecs) {
+    const nextDueDate = new Date(now.getTime() + spec.dueDays * 86400000);
+    let plan = await prisma.maintenancePlan.findFirst({ where: { organizationId: orgId, planCode: spec.code } });
+    const planData = {
+      title: spec.title,
+      planCode: spec.code,
+      description: `Demo ${spec.frequency.toLowerCase()} preventive inspection. Generate a work order when ready to perform the checklist.`,
+      category: spec.category,
+      maintenanceType: 'Preventive',
+      priority: spec.asset.status === 'IN_REPAIR' ? 'HIGH' as const : 'MEDIUM' as const,
+      status: 'ACTIVE',
+      frequency: spec.frequency,
+      nextDueDate,
+      buildingId: spec.building.id,
+      locationScope: 'BUILDING',
+      locationName: spec.building.name,
+      facilityIds: [spec.facility.id],
+      assetIds: [spec.asset.id],
+      targetAssetCategory: spec.category,
+      scheduleConfig: { timeZone: 'Asia/Kolkata', preferredWindow: '09:00-12:00' },
+      assignmentConfig: { strategy: 'MANUAL' },
+      blackoutConfig: { autoSyncFacilityBlock: true, blockDurationHours: 3 },
+      complianceScore: 100,
+    };
+    plan = plan
+      ? await prisma.maintenancePlan.update({ where: { id: plan.id }, data: planData })
+      : await prisma.maintenancePlan.create({ data: { organizationId: orgId, ...planData } });
+    await prisma.maintenanceChecklist.deleteMany({ where: { planId: plan.id } });
+    await prisma.maintenanceChecklist.createMany({
+      data: spec.tasks.map((taskName, index) => ({
+        planId: plan!.id,
+        taskName,
+        description: 'Complete the check and record any issue for the supervisor.',
+        instructions: 'Follow site safety rules. Stop and report unsafe conditions.',
+        sequence: index + 1,
+        taskCategory: spec.category,
+        taskType: 'CHECKBOX',
+        isMandatory: true,
+        photoRequired: index === spec.tasks.length - 1,
+        estimatedDurationMinutes: 15,
+      })),
+    });
+  }
+
   // -------------------------------------------------------------
   // 7. VEHICLES (Cars, SUVs, Electric Vehicles, Two-wheelers)
   // -------------------------------------------------------------
