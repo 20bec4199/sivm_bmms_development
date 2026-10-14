@@ -5,7 +5,7 @@ export const injectStore = (_store: any) => {
 };
 import { setCredentials, logout } from '../store/slices/authSlice';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/backend-api';
 
 export const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -65,7 +65,7 @@ axiosInstance.interceptors.response.use(
 
       try {
         // 1. Attempt to refresh the token
-        const { data } = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
+        const { data } = await axiosInstance.post('/auth/refresh', {}, { withCredentials: true });
         
         if (!data || !data.accessToken) {
           throw new Error('No access token returned from refresh');

@@ -9,7 +9,7 @@ export interface ComplaintStatistics {
 export const complaintsApi = createApi({
   reducerPath: 'complaintsApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || '/backend-api',
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).auth.accessToken;
       if (token) {

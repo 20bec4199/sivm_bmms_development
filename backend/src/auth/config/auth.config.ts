@@ -26,5 +26,7 @@ export const authConfig = registerAs('auth', () => ({
         : ('lax' as const),
     // Set to your domain in production (e.g. 'example.com')
     domain: process.env.COOKIE_DOMAIN ?? undefined,
+    // Must match the public path of /auth/refresh (e.g. '/backend-api/auth/refresh' behind a proxy)
+    refreshPath: process.env.COOKIE_PATH ?? '/auth/refresh',
   },
 }));

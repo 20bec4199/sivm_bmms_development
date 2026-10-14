@@ -4,7 +4,7 @@ import { RootState } from '../store/store';
 export const facilitiesApi = createApi({
   reducerPath: 'facilitiesApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || '/backend-api',
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).auth.accessToken;
       if (token) {

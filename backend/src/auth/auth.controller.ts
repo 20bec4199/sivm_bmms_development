@@ -57,12 +57,13 @@ export class AuthController {
   private setRefreshCookie(res: Response, rawRefreshToken: string): void {
     const secure = this.configService.get<boolean>('auth.cookie.secure') ?? false;
     const sameSite = this.configService.get<'lax' | 'strict' | 'none'>('auth.cookie.sameSite') ?? 'lax';
+    const path = this.configService.get<string>('auth.cookie.refreshPath') ?? '/auth/refresh';
 
     res.cookie(COOKIE_REFRESH_TOKEN, rawRefreshToken, {
       httpOnly: true,
       secure,
       sameSite,
-      path: '/auth/refresh', // refresh token is ONLY sent to the rotation endpoint
+      path, // refresh token is ONLY sent to the rotation endpoint
       maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
     });
   }
@@ -70,10 +71,11 @@ export class AuthController {
   private clearAuthCookies(res: Response): void {
     const secure = this.configService.get<boolean>('auth.cookie.secure') ?? false;
     const sameSite = this.configService.get<'lax' | 'strict' | 'none'>('auth.cookie.sameSite') ?? 'lax';
+    const path = this.configService.get<string>('auth.cookie.refreshPath') ?? '/auth/refresh';
 
     res.clearCookie(COOKIE_ACCESS_TOKEN);
     res.clearCookie(COOKIE_REFRESH_TOKEN, { 
-      path: '/auth/refresh',
+      path,
       secure,
       sameSite,
     });
