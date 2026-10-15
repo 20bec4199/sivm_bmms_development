@@ -65,7 +65,7 @@ export default function OrganizationAssetsPage() {
   const { data: assetsResponse, isLoading: isLoadingAssets, refetch: refetchAssets } = useGetAssetsQuery({});
   const { data: warrantyResponse, isLoading: isLoadingWarranty } = useGetWarrantyAlertsQuery();
   const { data: categoriesResponse, isLoading: isLoadingCategories, refetch: refetchCategories } = useGetAssetCategoriesQuery({});
-  const { data: usersData } = useGetUsersQuery({ limit: 100 });
+  const { data: usersData } = useGetUsersQuery({ take: 500 });
   
   // Specific asset query for real-time documents drawer
   const { data: detailedAsset, refetch: refetchDetailedAsset } = useGetAssetByIdQuery(

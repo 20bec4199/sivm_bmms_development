@@ -45,7 +45,7 @@ export default function OrganizationComplaintsPage() {
   const { data: categoriesData } = useGetComplaintCategoriesQuery({});
   const { data: statsData } = useGetStatisticsQuery();
   const { data: unitsData } = useGetUnitsQuery({});
-  const { data: usersData } = useGetUsersQuery({ limit: 100 });
+  const { data: usersData } = useGetUsersQuery({ take: 500 });
 
   // Mutations
   const [deleteComplaint] = useDeleteComplaintMutation();

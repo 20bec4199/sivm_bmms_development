@@ -32,7 +32,7 @@ export default function ComplaintDetailsPage() {
   const router = useRouter();
 
   const { data: complaint, isLoading, refetch } = useGetComplaintByIdQuery(id);
-  const { data: usersData } = useGetUsersQuery({ limit: 100 });
+  const { data: usersData } = useGetUsersQuery({ take: 500 });
   const [updateComplaint, { isLoading: isUpdating }] = useUpdateComplaintMutation();
   const [addComment, { isLoading: isCommenting }] = useAddComplaintCommentMutation();
   const [createWorkOrder, { isLoading: isCreatingWorkOrder }] = useCreateWorkOrderMutation();
