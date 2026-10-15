@@ -14,6 +14,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
+import { Country, State, City } from 'country-state-city';
 
 const CATEGORY_LABELS: Record<string, string> = {
   'RESIDENTIAL': 'Residential',
@@ -46,13 +47,30 @@ export default function CreateBuildingPage() {
   // In production, this comes from the authenticated user's organization profile via Redux
   const allowedCategories = useSelector((state: RootState) => (state.auth.user as any)?.organizationPropertyCategories) || ['RESIDENTIAL'];
 
-  const { register, handleSubmit, formState: { errors } } = useForm<BuildingFormValues>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<BuildingFormValues>({
     resolver: zodResolver(buildingSchema),
     defaultValues: {
       propertyType: allowedCategories[0] || '',
-      country: 'United States',
+      country: '',
     }
   });
+
+  const countries = React.useMemo(() => Country.getAllCountries(), []);
+  const selectedCountry = watch('country');
+  const selectedState = watch('state');
+  const countryObj = countries.find((c) => c.name === selectedCountry);
+  const states = React.useMemo(
+    () => (countryObj ? State.getStatesOfCountry(countryObj.isoCode) : []),
+    [countryObj],
+  );
+  const stateObj = states.find((s) => s.name === selectedState);
+  const cities = React.useMemo(
+    () => (countryObj && stateObj ? City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode) : []),
+    [countryObj, stateObj],
+  );
+
+  const selectClass =
+    'block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-white';
 
   const onSubmit = async (data: BuildingFormValues) => {
     setError(null);
@@ -124,9 +142,55 @@ export default function CreateBuildingPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              <Input label="Country *" {...register('country')} error={errors.country?.message} />
-              <Input label="State/Province *" {...register('state')} error={errors.state?.message} />
-              <Input label="City *" {...register('city')} error={errors.city?.message} />
+              <div className="w-full space-y-1.5">
+                <label htmlFor="country" className="block text-xs font-bold text-slate-700 dark:text-slate-300">Country *</label>
+                <select
+                  id="country"
+                  className={selectClass}
+                  {...register('country', {
+                    onChange: () => {
+                      setValue('state', '');
+                      setValue('city', '');
+                    },
+                  })}
+                >
+                  <option value="">Select country</option>
+                  {countries.map((c) => (
+                    <option key={c.isoCode} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+                {errors.country && <p className="text-xs font-bold text-rose-600">{errors.country.message}</p>}
+              </div>
+              <div className="w-full space-y-1.5">
+                <label htmlFor="state" className="block text-xs font-bold text-slate-700 dark:text-slate-300">State/Province *</label>
+                <select
+                  id="state"
+                  className={selectClass}
+                  disabled={!countryObj || states.length === 0}
+                  {...register('state', { onChange: () => setValue('city', '') })}
+                >
+                  <option value="">Select state / province</option>
+                  {states.map((s) => (
+                    <option key={s.isoCode} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+                {errors.state && <p className="text-xs font-bold text-rose-600">{errors.state.message}</p>}
+              </div>
+              <div className="w-full space-y-1.5">
+                <label htmlFor="city" className="block text-xs font-bold text-slate-700 dark:text-slate-300">City *</label>
+                <select
+                  id="city"
+                  className={selectClass}
+                  disabled={!stateObj || cities.length === 0}
+                  {...register('city')}
+                >
+                  <option value="">Select city</option>
+                  {cities.map((c) => (
+                    <option key={`${c.name}-${c.latitude}-${c.longitude}`} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+                {errors.city && <p className="text-xs font-bold text-rose-600">{errors.city.message}</p>}
+              </div>
               <Input label="Postal Code *" {...register('postalCode')} error={errors.postalCode?.message} />
               <div className="sm:col-span-2">
                 <Input label="Full Address *" {...register('address')} error={errors.address?.message} />

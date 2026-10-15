@@ -15,7 +15,6 @@ import {
   X,
   Activity,
   BarChart3,
-  ListFilter,
   ShieldAlert,
   Bell,
   Lock,
@@ -107,7 +106,6 @@ export const Sidebar = () => {
     {
       category: 'Audit & System',
       items: [
-        { title: 'Activity Logs', href: '/platform/activity/logs', icon: <ListFilter size={20} /> },
         { title: 'Audit Logs', href: '/platform/audit-logs', icon: <ShieldAlert size={20} /> },
         { title: 'Security', href: '/platform/security', icon: <Lock size={20} /> },
         { title: 'System Settings', href: '/platform/settings', icon: <Settings size={20} /> },
@@ -304,7 +302,15 @@ export const Sidebar = () => {
               )}
               <div className={`space-y-1 transition-all duration-200 ${isCollapsed ? 'hidden' : 'block'}`}>
                 {group.items.map((item) => {
-                  const isActive = pathname.startsWith(item.href);
+                  const isActive =
+                    (pathname === item.href || pathname.startsWith(item.href + '/')) &&
+                    !navGroups.some((g) =>
+                      g.items.some(
+                        (other) =>
+                          other.href.length > item.href.length &&
+                          (pathname === other.href || pathname.startsWith(other.href + '/')),
+                      ),
+                    );
                   return (
                     <Link
                       key={item.title}

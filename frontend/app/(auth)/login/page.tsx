@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useLoginMutation } from '../../../services/authApi';
 import { setCredentials } from '../../../store/slices/authSlice';
 import { RootState } from '../../../store/store';
-import { Building2, Key, ShieldCheck, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Building2, Key, ShieldCheck, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -24,6 +24,7 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
   const [error, setError] = React.useState<string | null>(null);
+  const [showPassword, setShowPassword] = React.useState(false);
   
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
@@ -147,11 +148,19 @@ export default function LoginPage() {
                   </div>
                   <input
                     id="password"
-                    type="password"
-                    className={`block w-full pl-11 pr-4 py-3.5 bg-white/5 border rounded-xl text-white placeholder-slate-500 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all ${errors.password ? 'border-red-500/50 bg-red-500/5' : 'border-white/10'}`}
+                    type={showPassword ? 'text' : 'password'}
+                    className={`block w-full pl-11 pr-12 py-3.5 bg-white/5 border rounded-xl text-white placeholder-slate-500 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all ${errors.password ? 'border-red-500/50 bg-red-500/5' : 'border-white/10'}`}
                     placeholder="••••••••"
                     {...register('password')}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-blue-400 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
                 {errors.password && <p className="mt-2 ml-1 text-xs text-red-400 font-medium">{errors.password.message}</p>}
               </div>
