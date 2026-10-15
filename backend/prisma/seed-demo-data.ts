@@ -1143,6 +1143,240 @@ async function seedDemoData() {
     }
   }
 
+  // -------------------------------------------------------------
+  // 15. TECHNICIANS, SECURITY GUARDS & COMPLAINTS
+  // -------------------------------------------------------------
+  console.log('\n🛠️  Seeding Technicians...');
+  async function ensureRole(name: string, description: string) {
+    let role = await prisma.role.findFirst({ where: { name, organizationId: orgId } });
+    if (!role) {
+      role = await prisma.role.create({ data: { name, description, organizationId: orgId } });
+    }
+    return role;
+  }
+  const technicianRole = await ensureRole('TECHNICIAN', 'Maintenance and service staff');
+  const guardRole = await ensureRole('SECURITY_GUARD', 'Security staff for visitor access, incidents, and patrols');
+
+  const techniciansData = [
+    { email: 'tech.electrician@tamilapartments.com', first: 'Murugan', last: 'Selvam', empId: 'TECH-001', specialization: 'Electrical', skills: ['Wiring', 'Panel Maintenance', 'Lighting'], experience: 8, shift: 'Day' },
+    { email: 'tech.plumber@tamilapartments.com', first: 'Ganesh', last: 'Raman', empId: 'TECH-002', specialization: 'Plumbing', skills: ['Pipe Fitting', 'Leak Repair', 'Pump Service'], experience: 6, shift: 'Day' },
+    { email: 'tech.hvac@tamilapartments.com', first: 'Imran', last: 'Khan', empId: 'TECH-003', specialization: 'HVAC', skills: ['AC Servicing', 'Chiller Operation'], experience: 10, shift: 'Day' },
+    { email: 'tech.general@tamilapartments.com', first: 'Bala', last: 'Murali', empId: 'TECH-004', specialization: 'General Maintenance', skills: ['Carpentry', 'Painting', 'Lift Support'], experience: 4, shift: 'Evening' },
+  ];
+
+  const technicians: any[] = [];
+  for (const t of techniciansData) {
+    let user = await prisma.user.findFirst({ where: { email: t.email } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: t.email,
+          emailNormalized: t.email.toLowerCase(),
+          passwordHash: defaultPasswordHash,
+          firstName: t.first,
+          lastName: t.last,
+          isActive: true,
+          emailVerified: true,
+          organizationId: orgId,
+        },
+      });
+    }
+    await prisma.userRole.createMany({ data: [{ userId: user.id, roleId: technicianRole.id }], skipDuplicates: true });
+    await prisma.technicianProfile.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        organizationId: orgId,
+        userId: user.id,
+        employeeId: t.empId,
+        specialization: t.specialization,
+        experience: t.experience,
+        shift: t.shift,
+        joiningDate: new Date('2024-02-01'),
+        skills: t.skills,
+        availability: 'AVAILABLE',
+        workingHours: t.shift === 'Day' ? '09:00-18:00' : '14:00-22:00',
+        status: 'ACTIVE',
+        assignedBuildings: buildings.map((b) => b.id),
+        assignedTowers: [],
+      },
+    });
+    technicians.push(user);
+    console.log(`   ✓ Technician: ${t.first} ${t.last} (${t.email}) - ${t.specialization}`);
+  }
+
+  console.log('\n💂 Seeding Security Guards & Posts...');
+  const guardsData = [
+    { email: 'guard.gate@tamilapartments.com', first: 'Ravi', last: 'Shankar', shift: 'Morning' },
+    { email: 'guard.lobby@tamilapartments.com', first: 'Senthil', last: 'Nathan', shift: 'Evening' },
+    { email: 'guard.night@tamilapartments.com', first: 'Mohan', last: 'Das', shift: 'Night' },
+  ];
+
+  const guards: any[] = [];
+  for (const g of guardsData) {
+    let user = await prisma.user.findFirst({ where: { email: g.email } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: g.email,
+          emailNormalized: g.email.toLowerCase(),
+          passwordHash: defaultPasswordHash,
+          firstName: g.first,
+          lastName: g.last,
+          isActive: true,
+          emailVerified: true,
+          organizationId: orgId,
+        },
+      });
+    }
+    await prisma.userRole.createMany({ data: [{ userId: user.id, roleId: guardRole.id }], skipDuplicates: true });
+    guards.push({ user, shift: g.shift });
+    console.log(`   ✓ Security Guard: ${g.first} ${g.last} (${g.email}) - ${g.shift} shift`);
+  }
+
+  const postsData = [
+    { name: 'Main Gate', postType: 'GATE', description: 'Vehicle and visitor entry control', duties: ['Verify visitors', 'Record vehicle entry', 'Operate boom barrier'], building: buildings[0] },
+    { name: 'Tower A Lobby Desk', postType: 'LOBBY', description: 'Lobby reception and access desk', duties: ['Greet visitors', 'Monitor CCTV', 'Handle parcels'], building: buildings[0] },
+    { name: 'Basement Patrol', postType: 'PATROL', description: 'Parking and basement patrol', duties: ['Hourly patrol', 'Check fire exits'], building: buildings[0] },
+  ];
+  const shiftTimes: Record<string, { start: string; end: string }> = {
+    Morning: { start: '06:00', end: '14:00' },
+    Evening: { start: '14:00', end: '22:00' },
+    Night: { start: '22:00', end: '06:00' },
+  };
+  for (let i = 0; i < postsData.length; i++) {
+    const p = postsData[i];
+    let post = await prisma.securityPost.findFirst({ where: { organizationId: orgId, name: p.name } });
+    if (!post) {
+      post = await prisma.securityPost.create({
+        data: {
+          organizationId: orgId,
+          name: p.name,
+          postType: p.postType,
+          description: p.description,
+          duties: p.duties,
+          propertyNodeId: p.building.id,
+          isActive: true,
+        },
+      });
+    }
+    const guard = guards[i];
+    const existingAssignment = await prisma.securityPostAssignment.findFirst({
+      where: { organizationId: orgId, postId: post.id, guardId: guard.user.id },
+    });
+    if (!existingAssignment) {
+      const day = new Date();
+      const [sh, sm] = shiftTimes[guard.shift].start.split(':').map(Number);
+      const [eh, em] = shiftTimes[guard.shift].end.split(':').map(Number);
+      const startsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), sh, sm);
+      const endsAt = new Date(day.getFullYear(), day.getMonth(), day.getDate() + (eh <= sh ? 1 : 0), eh, em);
+      await prisma.securityPostAssignment.create({
+        data: {
+          organizationId: orgId,
+          postId: post.id,
+          guardId: guard.user.id,
+          shiftName: guard.shift,
+          startsAt,
+          endsAt,
+          daysOfWeek: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
+          isActive: true,
+          assignedById: orgAdmin?.id,
+        },
+      });
+    }
+    console.log(`   ✓ Post: ${p.name} -> ${guard.user.firstName} ${guard.user.lastName}`);
+  }
+
+  const incidentsData = [
+    { title: 'Unauthorised person near basement entrance', description: 'An unidentified person was seen loitering near the B1 entrance. Escorted out by the guard.', severity: 'MINOR', status: 'RESOLVED', guard: 0 },
+    { title: 'Fire exit door found blocked', description: 'Stored cartons found blocking the fire exit on the Tower A ground floor. Removed and reported.', severity: 'MAJOR', status: 'INVESTIGATING', guard: 1 },
+  ];
+  for (const inc of incidentsData) {
+    const exists = await prisma.incident.findFirst({ where: { organizationId: orgId, title: inc.title } });
+    if (!exists) {
+      await prisma.incident.create({
+        data: {
+          organizationId: orgId,
+          title: inc.title,
+          description: inc.description,
+          reportedById: guards[inc.guard].user.id,
+          incidentDate: new Date(Date.now() - 86400000),
+          severity: inc.severity as any,
+          status: inc.status as any,
+        },
+      });
+    }
+  }
+  console.log(`   ✓ Incidents: ${incidentsData.length}`);
+
+  console.log('\n📣 Seeding Complaints...');
+  const complaintCategoryNames = ['Electrical', 'Plumbing', 'Lift', 'Cleaning', 'Parking', 'Security', 'Water Leakage', 'Air Conditioning', 'Common Area', 'Others'];
+  const complaintCategories: Record<string, any> = {};
+  for (const name of complaintCategoryNames) {
+    let cat = await prisma.complaintCategory.findFirst({ where: { organizationId: orgId, name } });
+    if (!cat) {
+      cat = await prisma.complaintCategory.create({
+        data: { organizationId: orgId, name, description: `${name} related complaints` },
+      });
+    }
+    complaintCategories[name] = cat;
+  }
+
+  const complaintsSpec = [
+    { title: 'Power outage in kitchen sockets', description: 'Kitchen sockets stopped working since morning. MCB trips when reset.', category: 'Electrical', priority: 'HIGH', status: 'NEW', owner: 0 },
+    { title: 'Water leakage from bathroom ceiling', description: 'Water is dripping from the ceiling of the master bathroom. Possible leak from the unit above.', category: 'Water Leakage', priority: 'CRITICAL', status: 'ASSIGNED', owner: 1, tech: 1 },
+    { title: 'Lift stops between floors', description: 'Tower A lift 2 stops between 2nd and 3rd floor for a few seconds during peak hours.', category: 'Lift', priority: 'HIGH', status: 'IN_PROGRESS', owner: 2, tech: 3 },
+    { title: 'AC not cooling properly', description: 'Living room AC is running but not cooling. Needs gas check and filter cleaning.', category: 'Air Conditioning', priority: 'MEDIUM', status: 'IN_PROGRESS', owner: 3, tech: 2 },
+    { title: 'Corridor lights not working', description: 'Three corridor lights on the 3rd floor are not working.', category: 'Electrical', priority: 'MEDIUM', status: 'RESOLVED', owner: 4, tech: 0 },
+    { title: 'Garbage not cleared from common area', description: 'Garbage near the staircase landing was not cleared for two days.', category: 'Cleaning', priority: 'LOW', status: 'OPEN', owner: 5 },
+    { title: 'Unknown vehicle in my parking bay', description: 'A vehicle that does not belong to us is parked in our allotted bay.', category: 'Parking', priority: 'MEDIUM', status: 'CLOSED', owner: 6, tech: 3 },
+    { title: 'Tap leaking in kitchen', description: 'Kitchen tap keeps dripping even when fully closed.', category: 'Plumbing', priority: 'LOW', status: 'ASSIGNED', owner: 7, tech: 1 },
+  ];
+
+  const complaintOwnerOrder = owners;
+  for (const c of complaintsSpec) {
+    const owner = complaintOwnerOrder[c.owner];
+    if (!owner?.userId) continue;
+    const exists = await prisma.complaint.findFirst({ where: { organizationId: orgId, title: c.title } });
+    if (exists) continue;
+    const tech = c.tech !== undefined ? technicians[c.tech] : undefined;
+    const complaint = await prisma.complaint.create({
+      data: {
+        organizationId: orgId,
+        propertyNodeId: owner.propertyNodeId,
+        categoryId: complaintCategories[c.category].id,
+        creatorId: owner.userId,
+        title: c.title,
+        description: c.description,
+        status: c.status as any,
+        priority: c.priority as any,
+        assignedToId: tech?.id,
+      },
+    });
+    await prisma.complaintHistory.create({
+      data: { complaintId: complaint.id, statusFrom: null, statusTo: 'NEW', notes: 'Complaint submitted' },
+    });
+    if (tech) {
+      await prisma.complaintHistory.create({
+        data: { complaintId: complaint.id, statusFrom: 'NEW', statusTo: 'ASSIGNED', notes: `Assigned to ${tech.firstName} ${tech.lastName}` },
+      });
+      await prisma.complaintComment.create({
+        data: { complaintId: complaint.id, userId: tech.id, content: 'Noted. I will visit the unit and update the status.' },
+      });
+    }
+    if (['IN_PROGRESS', 'RESOLVED', 'CLOSED'].includes(c.status)) {
+      await prisma.complaintHistory.create({
+        data: { complaintId: complaint.id, statusFrom: 'ASSIGNED', statusTo: 'IN_PROGRESS', notes: 'Work started' },
+      });
+    }
+    if (['RESOLVED', 'CLOSED'].includes(c.status)) {
+      await prisma.complaintHistory.create({
+        data: { complaintId: complaint.id, statusFrom: 'IN_PROGRESS', statusTo: c.status as any, notes: 'Issue fixed' },
+      });
+    }
+    console.log(`   ✓ Complaint: "${c.title}" [${c.status}]`);
+  }
+
   console.log('\n🎉 Comprehensive Demo Seeding Complete!');
   console.log(`
 Summary of Created Data:
